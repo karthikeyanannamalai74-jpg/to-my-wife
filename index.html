@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Will you be my Valentine?</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-pink: #e91e63;
+            --bg-grad-start: #D5B2FF;
+            --bg-grad-end: #FEE0EE;
+        }
+
+        body {
+            margin: 0; padding: 0; display: flex; justify-content: center;
+            align-items: center; height: 100vh; font-family: 'Inter', sans-serif; 
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--bg-grad-start) 0%, var(--bg-grad-end) 100%);
+        }
+
+        .floating-heart {
+            position: absolute;
+            color: rgba(233, 30, 99, 0.2); 
+            pointer-events: none;
+            z-index: 1;
+            animation: floatUp 7s linear forwards, dance 3s ease-in-out infinite;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(110vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-15vh) rotate(360deg); opacity: 0; }
+        }
+
+        @keyframes dance {
+            0%, 100% { margin-left: 0px; }
+            50% { margin-left: 30px; }
+        }
+
+        #card {
+            background: #FEE0EE; padding: 40px; border-radius: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center;
+            width: 400px; position: relative; z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        h1 { font-family: 'Dancing Script', cursive; font-size: 38px; color: #333; margin: 0; }
+        .main-quote { font-style: italic; color: #884d8a; font-size: 14px; margin: 10px 0 25px 0; }
+        .subtitle { color: #666; font-size: 13px; margin-bottom: 25px; }
+        
+        .btn-container { display: flex; justify-content: center; align-items: center; gap: 15px; min-height: 70px; }
+        
+        button { padding: 12px 28px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; }
+        #yesBtn { background-color: var(--primary-pink); color: white; text-transform: uppercase; box-shadow: 0 4px 15px rgba(233, 30, 99, 0.3); }
+        #noBtn { background-color: #eee; color: #555; text-transform: uppercase; position: relative; }
+        
+        #message-tag { position: fixed; background: #fff9c4; color: #333; padding: 4px 10px; border-radius: 4px; font-size: 12px; display: none; z-index: 1000; pointer-events: none; }
+        
+        #success-content { display: none; }
+        .yay-text { font-family: 'Dancing Script', cursive; font-size: 52px; color: var(--primary-pink); margin-bottom: 5px; }
+        .success-quote { font-size: 16px; color: #555; margin-bottom: 20px; font-style: italic; line-height: 1.4; }
+        .couple-img { width: 230px; border-radius: 15px; margin: 10px 0; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
+        #countdown-container { margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(233, 30, 99, 0.15); }
+        #timer { font-weight: bold; color: var(--primary-pink); font-size: 18px; }
+        .timer-label { font-size: 11px; color: #999; text-transform: uppercase; display: block; margin-bottom: 5px; }
+
+        #music-control {
+            position: fixed; bottom: 25px; right: 25px;
+            background: white; border-radius: 50%; width: 45px; height: 45px;
+            display: none; justify-content: center; align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer;
+            z-index: 1000; font-size: 20px; border: none;
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="valentineMusic" loop>
+        <source src="En kanavinil vantha kaadhaliye.mp3.mp3" type="audio/mpeg">
+    </audio>
+
+    <button id="music-control" onclick="toggleMusic()">🔊</button>
+
+    <div id="card">
+        <div id="question-content">
+            <h1>Babieee❤️</h1>
+            <p class="main-quote">"In all the world, there is no heart for me like yours."</p>
+            <p style="font-size: 20px; color: #444; font-weight: 600;">Will you be my Valentine? 💕</p>
+            <p class="subtitle">I promise to love you more every single day.</p>
+            
+            <div class="btn-container">
+                <button id="yesBtn" onclick="celebrate()">YES</button>
+                <button id="noBtn" onmouseover="moveNoButton()">NO</button>
+            </div>
+            
+            <div id="countdown-container">
+                <span class="timer-label">Counting down to our special day:</span>
+                <div id="timer">Loading...</div>
+            </div>
+        </div>
+
+        <div id="success-content">
+            <div class="yay-text">YAY!!! ❤️</div>
+            <p class="success-quote">"You are my today and all of my tomorrows."</p>
+            <img src="https://media.tenor.com/KtQDZsfPMnQAAAAi/couple-couple-hug.gif" class="couple-img">
+            <div style="color: var(--primary-pink); font-weight: bold; margin-top: 15px; font-size: 18px;">Happy Valentine's Day, my love!</div>
+        </div>
+    </div>
+
+    <div id="message-tag"></div>
+
+    <script>
+        let hoverCount = 0;
+        let yesFontSize = 16;
+        
+        const messages = [
+            "My heart is breaking! 💔", 
+            "I'll give you chocolates! 🍫", 
+            "Wrong way! ⬅️", 
+            "You're so mean! 😂", 
+            "Just say yes already! ✨",
+            "Error 404: 'No' not found! 🚫",
+            "Think about the cuddles! 🤗",
+            "Are you sure? 🥺",
+            "Is that your final answer? 🧐",
+            "Nice try, but no! 👋"
+        ];
+
+        const music = document.getElementById("valentineMusic");
+        const musicBtn = document.getElementById("music-control");
+
+        function createFloatingHeart() {
+            const heart = document.createElement("div");
+            heart.className = "floating-heart";
+            heart.innerHTML = "❤️";
+            heart.style.left = Math.random() * 100 + "vw";
+            heart.style.fontSize = (Math.random() * 10 + 12) + "px";
+            heart.style.animationDuration = (Math.random() * 3 + 4) + "s, " + (Math.random() * 2 + 2) + "s";
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 7000);
+        }
+        setInterval(createFloatingHeart, 250);
+
+        function moveNoButton() {
+            const noBtn = document.getElementById('noBtn');
+            const yesBtn = document.getElementById('yesBtn');
+            const tag = document.getElementById('message-tag');
+            
+            const btnWidth = noBtn.offsetWidth;
+            const btnHeight = noBtn.offsetHeight;
+            const padding = 60;
+
+            const maxX = window.innerWidth - btnWidth - padding;
+            const maxY = window.innerHeight - btnHeight - padding;
+            
+            const randomX = Math.max(padding, Math.floor(Math.random() * maxX));
+            const randomY = Math.max(padding, Math.floor(Math.random() * maxY));
+            
+            noBtn.style.position = 'fixed';
+            noBtn.style.left = randomX + 'px';
+            noBtn.style.top = randomY + 'px';
+            
+            yesFontSize += 8;
+            yesBtn.style.fontSize = yesFontSize + 'px';
+            yesBtn.style.padding = (yesFontSize * 0.7) + 'px ' + (yesFontSize * 1.4) + 'px';
+            
+            tag.style.display = 'block';
+            tag.style.left = randomX + 'px';
+            tag.style.top = (randomY - 40) + 'px';
+            tag.innerText = messages[Math.min(hoverCount, messages.length - 1)];
+            hoverCount++;
+        }
+
+        function celebrate() {
+            document.getElementById('question-content').style.display = 'none';
+            document.getElementById('message-tag').style.display = 'none';
+            document.getElementById('success-content').style.display = 'block';
+            
+            musicBtn.style.display = 'flex';
+            music.play();
+
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+
+            const end = Date.now() + 4000;
+            const colors = ['#e91e63', '#ffffff', '#ff85a2'];
+
+            (function frame() {
+                confetti({
+                    particleCount: 3,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 },
+                    colors: colors
+                });
+                confetti({
+                    particleCount: 3,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 },
+                    colors: colors
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+
+        function toggleMusic() {
+            if (music.paused) { music.play(); musicBtn.innerText = "🔊"; }
+            else { music.pause(); musicBtn.innerText = "🔈"; }
+        }
+
+        function updateCountdown() {
+            const targetDate = new Date("February 14, 2026 00:00:00").getTime();
+            const now = new Date().getTime();
+            const difference = targetDate - now;
+            
+            if (difference < 0) { 
+                document.getElementById("timer").innerHTML = "HAPPY VALENTINE'S DAY! ❤️"; 
+                return; 
+            }
+            
+            const d = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const h = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const m = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((difference % (1000 * 60)) / 1000);
+            
+            document.getElementById("timer").innerHTML = d + "d " + h + "h " + m + "m " + s + "s";
+        }
+        setInterval(updateCountdown, 1000);
+        updateCountdown();
+    </script>
+</body>
+</html>
